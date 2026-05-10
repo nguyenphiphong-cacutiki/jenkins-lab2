@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'MAVENBUILDER'
+    }
 
     options {
         timeout(time: 10, unit: 'MINUTES')
