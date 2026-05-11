@@ -40,7 +40,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'npm run build kaka'
+                sh 'npm run build'
                 sh 'ls -la dist/'
             }
         }
