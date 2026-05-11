@@ -12,6 +12,7 @@ pipeline {
 
     environment {
         APP_NAME = 'jenkins-lab5-app'
+        BRANCH_NAME = 'lab5_claude'
     }
 
     stages {
