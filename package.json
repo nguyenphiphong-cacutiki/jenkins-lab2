@@ -1,8 +1,10 @@
 {
-  "name": "jenkins-lab3-app",
+  "name": "jenkins-lab5-app",
   "version": "1.0.0",
   "scripts": {
-    "test": "node test.js",
-    "build": "echo 'Bundling...' && mkdir -p dist && cp app.js dist/app.bundle.js"
+    "test:unit": "node tests/unit.js",
+    "test:integration": "node tests/integration.js",
+    "lint": "node tests/lint.js",
+    "build": "mkdir -p dist && cp app.js dist/app.bundle.js"
   }
 }
