@@ -4,23 +4,19 @@ pipeline {
     }
 
     options {
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 15, unit: 'MINUTES')
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
-    }
-
-    parameters {
-        string(name: 'BUILD_LABEL', defaultValue: 'dev', description: 'Label for this build')
+        ansiColor('xterm')
     }
 
     environment {
-        APP_NAME = 'jenkins-lab3-app'
+        APP_NAME = 'jenkins-lab5-app'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo "Building ${env.APP_NAME} with label ${params.BUILD_LABEL}"
                 checkout scm
             }
         }
@@ -28,38 +24,77 @@ pipeline {
         stage('Install') {
             steps {
                 sh 'node --version'
-                sh 'npm install'
+                sh 'npm install --no-audit --no-fund'
             }
         }
 
-        stage('Test') {
-            steps {
-                sh 'npm test'
+        stage('Quality Gates') {
+            parallel {
+                stage('Unit Tests') {
+                    steps { sh 'npm run test:unit' }
+                }
+                stage('Integration Tests') {
+                    steps { sh 'npm run test:integration' }
+                }
+                stage('Lint') {
+                    steps { sh 'npm run lint' }
+                }
+            }
+            post {
+                always {
+                    junit 'reports/*.xml'
+                }
             }
         }
 
         stage('Build') {
             steps {
                 sh 'npm run build'
-                sh 'ls -la dist/'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'dist/**', fingerprint: true
+                }
             }
         }
 
-        stage('Archive') {
+        stage('Approve Deploy') {
+            when { branch 'lab5_claude' }
             steps {
-                archiveArtifacts artifacts: 'dist/**', fingerprint: true
+                timeout(time: 2, unit: 'MINUTES') {
+                    input message: 'Deploy to production?', ok: 'Deploy'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when { branch 'lab5_claude' }
+            steps {
+                withCredentials([string(credentialsId: 'deploy-token',
+                                        variable: 'DEPLOY_TOKEN')]) {
+                    sh '''
+                        echo "Deploying $APP_NAME..."
+                        # In real life: curl -H "Authorization: Bearer $DEPLOY_TOKEN" ...
+                        echo "Token length: ${#DEPLOY_TOKEN}"   # never echo $DEPLOY_TOKEN itself
+                        echo "Deploy complete."
+                    '''
+                }
             }
         }
     }
+
     post {
-        always {
-            echo "Pipeline finished with status: ${currentBuild.currentResult}"
-        }
         success {
-            echo "✅ Build succeeded for label ${params.BUILD_LABEL}"
+            echo "✅ Pipeline succeeded — branch ${env.BRANCH_NAME ?: 'lab5_claude'}, build #${env.BUILD_NUMBER}"
         }
         failure {
-            echo "❌ Build failed — check the logs above"
+            echo "❌ Pipeline failed"
+        }
+        unstable {
+            echo "⚠️  Pipeline is unstable (some tests failed)"
+        }
+        always {
+            echo "Final status: ${currentBuild.currentResult}"
         }
     }
 }
